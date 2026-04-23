@@ -62,6 +62,8 @@ jobs:
         run: |
           mkdir build && cd build
           python ../configure.py --enable-optimize --sdks cs2 \
+            --plugin-name menus_export \
+            --plugin-alias menus_export \
             --mms_path $GITHUB_WORKSPACE/mmsource-2.0 \
             --hl2sdk-manifests $GITHUB_WORKSPACE/hl2sdk-manifests \
             --hl2sdk-root $GITHUB_WORKSPACE
