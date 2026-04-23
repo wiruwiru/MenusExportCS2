@@ -30,6 +30,12 @@ jobs:
           ref: cs2
           path: hl2sdk-cs2
 
+      - name: Checkout HL2SDK Manifests
+        uses: actions/checkout@v4
+        with:
+          repository: alliedmodders/hl2sdk-manifests
+          path: hl2sdk-manifests
+
       - name: Checkout AMBuild
         uses: actions/checkout@v4
         with:
@@ -48,7 +54,10 @@ jobs:
         working-directory: MenusExportCS2
         run: |
           mkdir build && cd build
-          python ../configure.py --enable-optimize --sdks cs2
+          python ../configure.py --enable-optimize --sdks cs2 \
+            --mms_path $GITHUB_WORKSPACE/mmsource-2.0 \
+            --hl2sdk-manifests $GITHUB_WORKSPACE/hl2sdk-manifests \
+            --hl2sdk-root $GITHUB_WORKSPACE
           ambuild
 
       - name: Upload artifact
