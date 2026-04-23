@@ -1,0 +1,91 @@
+name: Plugin builder and release
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  release:
+    types:
+      - created
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build - Linux
+    permissions: write-all
+    runs-on: ubuntu-latest
+    container: registry.gitlab.steamos.cloud/steamrt/sniper/sdk
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: MenusExportCS2
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Checkout Metamod
+        uses: actions/checkout@v4
+        with:
+          repository: alliedmodders/metamod-source
+          ref: master
+          path: mmsource-2.0
+          submodules: recursive
+
+      - name: Checkout HL2SDK
+        uses: actions/checkout@v4
+        with:
+          repository: alliedmodders/hl2sdk
+          ref: cs2
+          path: hl2sdk-cs2
+
+      - name: Checkout HL2SDK Manifests
+        uses: actions/checkout@v4
+        with:
+          repository: alliedmodders/hl2sdk-manifests
+          path: hl2sdk-manifests
+
+      - name: Checkout AMBuild
+        uses: actions/checkout@v4
+        with:
+          repository: alliedmodders/ambuild
+          path: ambuild
+
+      - name: Install AMBuild
+        run: cd ambuild && python setup.py install && cd ..
+
+      - name: Install Clang 16
+        run: |
+          apt update && apt install -y clang-16
+          ln -sf /usr/bin/clang-16 /usr/bin/clang && ln -sf /usr/bin/clang++-16 /usr/bin/clang++
+
+      - name: Build
+        working-directory: MenusExportCS2
+        run: |
+          mkdir build && cd build
+          python ../configure.py --enable-optimize --sdks cs2 \
+            --plugin-name MenusExport \
+            --plugin-alias MenusExport \
+            --mms_path $GITHUB_WORKSPACE/mmsource-2.0 \
+            --hl2sdk-manifests $GITHUB_WORKSPACE/hl2sdk-manifests \
+            --hl2sdk-root $GITHUB_WORKSPACE
+          ambuild
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Linux
+          path: MenusExportCS2/build/package
+
+      - name: Create release asset
+        if: github.event_name == 'release'
+        run: |
+          cd MenusExportCS2/build/package
+          tar -czf $GITHUB_WORKSPACE/MenusExport-${{ github.event.release.tag_name }}.tar.gz *
+
+      - name: Upload release asset
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./MenusExport-${{ github.event.release.tag_name }}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
